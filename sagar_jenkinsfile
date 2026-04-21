@@ -61,4 +61,32 @@ pipeline {
             }
         }
     }
+    stage('Deploy to EKS') {
+      steps {
+        sh '''
+        docker run --rm \
+          --entrypoint /bin/sh \
+          -v $WORKSPACE:/workspace \
+          -v $JENKINS_HOME/.kube:/root/.kube \
+          -e AWS_REGION=ap-south-1 \
+          public.ecr.aws/aws-cli/aws-cli:latest -c "
+    
+            echo 'Using existing curl (no install needed)' && \
+            curl --version && \
+    
+            echo 'Installing kubectl...' && \
+            curl -LO https://dl.k8s.io/release/v1.29.3/bin/linux/amd64/kubectl && \
+            chmod +x kubectl && mv kubectl /usr/local/bin/kubectl && \
+    
+            echo 'Updating kubeconfig...' && \
+            aws eks update-kubeconfig \
+              --region ap-south-1 \
+              --name jenkis-eks-cluster && \
+    
+            kubectl version --client && \
+            kubectl apply -f /workspace/k8s/
+          "
+        '''
+      }
+}
 }
